@@ -1,0 +1,8 @@
+{
+  "name": "Copy of GuardSystem Pro - Controle de Postos e Rondas",
+  "description": "Sistema profissional de gestão de segurança, controle de presença georreferenciado, rondas programadas e escalas inteligentes com antifraude.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
