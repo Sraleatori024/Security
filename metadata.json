@@ -1,8 +1,9 @@
 {
-  "name": "GuardSystem Pro - Sistema Consolidado",
-  "description": "Sistema profissional de gestão de segurança consolidado em estrutura simplificada para alta performance e portabilidade.",
   "requestFramePermissions": [
     "camera",
+    "microphone",
     "geolocation"
-  ]
+  ],
+  "name": "",
+  "description": ""
 }

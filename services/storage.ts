@@ -1,14 +1,14 @@
 
 import { AppState } from '../types';
 
-const STORAGE_KEY = 'guard_system_v3_db';
+const STORAGE_KEY = 'guard_system_pro_v4';
 
 const INITIAL_DATA: AppState = {
   employees: [
     { id: 'admin-0', name: 'Administrador', active: true, role: 'ADMIN' },
     { id: 'e-1', name: 'Pedro Souza', active: true, role: 'GUARD' },
     { id: 'e-2', name: 'Matheus Silva', active: true, role: 'GUARD' },
-    { id: 'e-3', name: 'Nicolas Santos', active: true, role: 'GUARD' },
+    { id: 'e-3', name: 'Nicolas Santos (Nico)', active: true, role: 'GUARD' },
   ],
   posts: [
     {
@@ -17,12 +17,19 @@ const INITIAL_DATA: AppState = {
       code: 'MIGUEL-QR',
       latitude: -23.5505,
       longitude: -46.6333,
+      altitude: 0,
       radiusMeters: 100,
       minIntervalMinutes: 60,
-      qrUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=MIGUEL-QR',
+      qrUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=MIGUEL-QR',
       allowedEmployeeIds: ['e-1', 'e-2', 'e-3'],
       dayShiftCapacity: 1,
-      nightShiftCapacity: 1
+      nightShiftCapacity: 1,
+      isDayActive: true,
+      dayStart: "07:00",
+      dayEnd: "19:00",
+      isNightActive: true,
+      nightStart: "19:00",
+      nightEnd: "07:00"
     }
   ],
   plannedShifts: [

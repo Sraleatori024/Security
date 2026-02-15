@@ -1,4 +1,5 @@
 
+
 export interface Employee {
   id: string;
   name: string;
@@ -6,7 +7,7 @@ export interface Employee {
   role: 'GUARD' | 'ADMIN';
 }
 
-export type ShiftType = 'DAY' | 'NIGHT';
+export type ShiftType = 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'DAY';
 
 export interface Post {
   id: string;
@@ -14,12 +15,29 @@ export interface Post {
   code: string;
   latitude: number;
   longitude: number;
+  altitude: number; // Campo solicitado para GPS completo
   radiusMeters: number;
   minIntervalMinutes: number;
   qrUrl: string;
   allowedEmployeeIds: string[]; 
-  dayShiftCapacity: number;
-  nightShiftCapacity: number;
+  // Configuração de 3 turnos
+  morningActive?: boolean;
+  morningStart?: string;
+  morningEnd?: string;
+  afternoonActive?: boolean;
+  afternoonStart?: string;
+  afternoonEnd?: string;
+  nightActive?: boolean;
+  nightStart?: string;
+  nightEnd?: string;
+  // Fallback para 2 turnos se necessário
+  isDayActive?: boolean;
+  dayStart?: string;
+  dayEnd?: string;
+  isNightActive?: boolean;
+  // Removed duplicate nightStart and nightEnd here
+  dayShiftCapacity?: number;
+  nightShiftCapacity?: number;
 }
 
 export interface PlannedShift {
@@ -37,10 +55,11 @@ export interface AttendanceRecord {
   postId: string;
   latitude: number;
   longitude: number;
+  altitude?: number;
   type: 'CHECK_IN' | 'RONDA' | 'CHECK_OUT';
   status: 'VALID' | 'SUBSTITUTION' | 'MISMATCH';
   substitutedEmployeeId?: string;
-  photos?: string[]; // Suporte para fotos das rondas
+  photos?: string[]; 
 }
 
 export interface AppState {
