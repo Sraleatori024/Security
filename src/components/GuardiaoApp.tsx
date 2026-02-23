@@ -14,7 +14,7 @@ import { authService } from '../services/authService';
 import QRScanner from './QRScanner';
 import { calculateDistance } from '../utils';
 
-const GuardiaoApp: React.FC<{ user: Guardiao }> = ({ user }) => {
+const GuardiaoApp: React.FC<{ user: Guardiao; onLogout: () => void }> = ({ user, onLogout }) => {
   const [postos, setPostos] = useState<Posto[]>([]);
   const [activeRonda, setActiveRonda] = useState<Ronda | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -149,7 +149,7 @@ const GuardiaoApp: React.FC<{ user: Guardiao }> = ({ user }) => {
               {user.nomeCompleto.charAt(0)}
             </div>
             <div>
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+              <p className={`text-[10px] font-black uppercase tracking-widest ${activeRonda ? "text-emerald-600" : "text-slate-400"}`}>
                 {activeRonda ? "● Online" : "● Offline"}
               </p>
               <h3 className="text-xl font-black text-slate-800 leading-tight">{user.nomeCompleto}</h3>
@@ -157,7 +157,7 @@ const GuardiaoApp: React.FC<{ user: Guardiao }> = ({ user }) => {
             </div>
           </div>
           <button 
-            onClick={() => authService.logout()}
+            onClick={onLogout}
             className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all"
           >
             <LogOut className="w-6 h-6" />

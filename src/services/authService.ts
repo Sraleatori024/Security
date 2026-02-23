@@ -21,6 +21,13 @@ export const authService = {
     await signOut(auth);
   },
 
+  async validateGuardianByName(name: string): Promise<Guardiao> {
+    const guardiao = await guardiaoService.getGuardiaoByName(name);
+    if (!guardiao) throw new Error("Guardião não encontrado.");
+    if (guardiao.status !== 'Ativo') throw new Error("Acesso bloqueado. Guardião inativo.");
+    return guardiao;
+  },
+
   onAuthStateChange(callback: (user: User | null) => void) {
     return onAuthStateChanged(auth, callback);
   }

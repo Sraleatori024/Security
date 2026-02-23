@@ -55,5 +55,13 @@ export const guardiaoService = {
       id: doc.id,
       ...doc.data()
     })) as Guardiao[];
+  },
+
+  async getGuardiaoByName(name: string): Promise<Guardiao | null> {
+    const q = query(collection(db, COLLECTION), where("nomeCompleto", "==", name));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as Guardiao;
   }
 };

@@ -20,7 +20,7 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import UniformsMaterialsModule from './uniforms/UniformsMaterialsModule';
 
-const AdminDashboard: React.FC<{ user: Guardiao }> = ({ user }) => {
+const AdminDashboard: React.FC<{ user: Guardiao; onLogout: () => void }> = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'GUARDIOES' | 'POSTOS' | 'MATERIAIS' | 'ENTREGAS' | 'RONDAS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
@@ -96,7 +96,7 @@ const AdminDashboard: React.FC<{ user: Guardiao }> = ({ user }) => {
 
         <div className="p-6 border-t border-slate-800">
           <button 
-            onClick={() => authService.logout()}
+            onClick={onLogout}
             className="w-full flex items-center gap-3 p-4 text-slate-400 hover:text-white rounded-2xl transition-all font-bold text-sm"
           >
             <LogOut className="w-5 h-5" /> <span>Sair do Painel</span>
@@ -237,7 +237,7 @@ const AdminDashboard: React.FC<{ user: Guardiao }> = ({ user }) => {
         )}
 
         {activeTab === 'GUARDIOES' && (
-          <GuardioesManager guardioes={guardioes} />
+          <GuardioesManager guardioes={guardioes} postos={postos} />
         )}
 
         {activeTab === 'RONDAS' && (
@@ -399,7 +399,7 @@ const PostosManager: React.FC<{ postos: Posto[], guardioes: Guardiao[] }> = ({ p
                   <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100 custom-scrollbar">
                     {guardioes.map(g => (
                       <label key={g.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-transparent hover:border-blue-500 cursor-pointer transition-all shadow-sm">
-                        <input type="checkbox" name="guardioes" value={g.nomeCompleto} defaultChecked={editingPosto?.guardioesAutorizados.includes(g.nomeCompleto)} className="w-5 h-5 rounded-lg text-blue-600" />
+                        <input type="checkbox" name="guardioes" value={g.id} defaultChecked={editingPosto?.guardioesAutorizados.includes(g.id)} className="w-5 h-5 rounded-lg text-blue-600" />
                         <span className="text-xs font-bold truncate text-slate-700">{g.nomeCompleto}</span>
                       </label>
                     ))}
@@ -418,36 +418,45 @@ const PostosManager: React.FC<{ postos: Posto[], guardioes: Guardiao[] }> = ({ p
 };
 
 
-const GuardioesManager: React.FC<{ guardioes: Guardiao[] }> = ({ guardioes }) => {
+const GuardioesManager: React.FC<{ guardioes: Guardiao[]; postos: Posto[] }> = ({ guardioes, postos }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingGuardiao, setEditingGuardiao] = useState<Guardiao | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const selectedPostos = Array.from(fd.getAll('postos')) as string[];
+    
     const data = {
       nomeCompleto: fd.get('nomeCompleto') as string,
       QRA: fd.get('QRA') as string,
       email: fd.get('email') as string,
       telefone: fd.get('telefone') as string,
-      status: 'Ativo' as const,
+      status: (fd.get('status') as 'Ativo' | 'Inativo') || 'Ativo',
       tipoUsuario: 'Guardião' as const,
-      postosAutorizados: [],
-      dataCadastro: new Date().toISOString()
+      postosAutorizados: selectedPostos,
+      dataCadastro: editingGuardiao?.dataCadastro || new Date().toISOString()
     };
 
-    // In a real app, we'd call a cloud function to create the Auth user too
-    // For now, we create the Firestore profile. 
-    // The ID should ideally match the Auth UID.
-    // We'll use a random ID for this demo if not using real Auth creation here.
-    await guardiaoService.createGuardiao(Math.random().toString(36).substr(2, 9), data);
+    if (editingGuardiao) {
+      await guardiaoService.updateGuardiao(editingGuardiao.id, data);
+    } else {
+      await guardiaoService.createGuardiao(Math.random().toString(36).substr(2, 9), data);
+    }
     setIsModalOpen(false);
+    setEditingGuardiao(null);
+  };
+
+  const toggleStatus = async (g: Guardiao) => {
+    const newStatus = g.status === 'Ativo' ? 'Inativo' : 'Ativo';
+    await guardiaoService.updateGuardiao(g.id, { status: newStatus });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-black text-slate-900">Gestão de Guardiões</h3>
-        <button onClick={() => setIsModalOpen(true)} className="px-6 py-3 bg-blue-600 text-white font-black rounded-2xl flex items-center gap-2 shadow-lg">
+        <button onClick={() => { setEditingGuardiao(null); setIsModalOpen(true); }} className="px-6 py-3 bg-blue-600 text-white font-black rounded-2xl flex items-center gap-2 shadow-lg">
           <Plus size={18} /> Novo Guardião
         </button>
       </div>
@@ -458,8 +467,8 @@ const GuardioesManager: React.FC<{ guardioes: Guardiao[] }> = ({ guardioes }) =>
             <tr className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
               <th className="p-8">Guardião</th>
               <th>QRA</th>
-              <th>E-mail / Telefone</th>
               <th>Status</th>
+              <th>Postos</th>
               <th className="p-8 text-right">Ações</th>
             </tr>
           </thead>
@@ -469,21 +478,26 @@ const GuardioesManager: React.FC<{ guardioes: Guardiao[] }> = ({ guardioes }) =>
                 <td className="p-8">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 font-black">{g.nomeCompleto.charAt(0)}</div>
-                    <p className="font-black text-slate-900 text-lg">{g.nomeCompleto}</p>
+                    <div>
+                      <p className="font-black text-slate-900 text-lg">{g.nomeCompleto}</p>
+                      <p className="text-[10px] text-slate-400">{g.email}</p>
+                    </div>
                   </div>
                 </td>
                 <td className="font-bold text-blue-600">{g.QRA || '---'}</td>
                 <td>
-                  <p className="text-xs font-bold text-slate-700">{g.email}</p>
-                  <p className="text-[10px] text-slate-400">{g.telefone}</p>
+                  <button 
+                    onClick={() => toggleStatus(g)}
+                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${g.status === 'Ativo' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                  >
+                    {g.status}
+                  </button>
                 </td>
                 <td>
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${g.status === 'Ativo' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                    {g.status}
-                  </span>
+                  <p className="text-xs font-bold text-slate-600">{g.postosAutorizados?.length || 0} postos</p>
                 </td>
                 <td className="p-8 text-right">
-                  <button className="p-3 text-slate-400 hover:text-blue-600 transition-all"><Edit2 size={18} /></button>
+                  <button onClick={() => { setEditingGuardiao(g); setIsModalOpen(true); }} className="p-3 text-slate-400 hover:text-blue-600 transition-all"><Edit2 size={18} /></button>
                 </td>
               </tr>
             ))}
@@ -494,32 +508,55 @@ const GuardioesManager: React.FC<{ guardioes: Guardiao[] }> = ({ guardioes }) =>
       <AnimatePresence>
         {isModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[3rem] p-10 w-full max-w-md shadow-2xl">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[3rem] p-10 w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-2xl font-black text-slate-900">Novo Guardião</h3>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><X /></button>
+                <h3 className="text-2xl font-black text-slate-900">{editingGuardiao ? 'Editar Guardião' : 'Novo Guardião'}</h3>
+                <button onClick={() => { setIsModalOpen(false); setEditingGuardiao(null); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><X /></button>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nome Completo</label>
-                  <input required name="nomeCompleto" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+              <form onSubmit={handleSubmit} className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Nome Completo</label>
+                    <input required name="nomeCompleto" defaultValue={editingGuardiao?.nomeCompleto} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">QRA</label>
+                    <input name="QRA" defaultValue={editingGuardiao?.QRA} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">QRA (Opcional)</label>
-                    <input name="QRA" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+                    <label className="text-[10px] font-black uppercase text-slate-400 ml-2">E-mail</label>
+                    <input required name="email" type="email" defaultValue={editingGuardiao?.email} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Telefone</label>
-                    <input required name="telefone" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+                    <input required name="telefone" defaultValue={editingGuardiao?.telefone} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
                   </div>
                 </div>
+                
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">E-mail</label>
-                  <input required name="email" type="email" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold" />
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Status</label>
+                  <select name="status" defaultValue={editingGuardiao?.status || 'Ativo'} className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold">
+                    <option value="Ativo">Ativo</option>
+                    <option value="Inativo">Inativo</option>
+                  </select>
                 </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Autorizar Postos</label>
+                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-4 bg-slate-50 rounded-2xl border border-slate-100 custom-scrollbar">
+                    {postos.map(p => (
+                      <label key={p.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-transparent hover:border-blue-500 cursor-pointer transition-all shadow-sm">
+                        <input type="checkbox" name="postos" value={p.id} defaultChecked={editingGuardiao?.postosAutorizados?.includes(p.id)} className="w-5 h-5 rounded-lg text-blue-600" />
+                        <span className="text-xs font-bold truncate text-slate-700">{p.nomePosto}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <button className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:bg-slate-800 transition-all">
-                  CADASTRAR PERFIL
+                  {editingGuardiao ? 'ATUALIZAR PERFIL' : 'CADASTRAR PERFIL'}
                 </button>
               </form>
             </motion.div>
